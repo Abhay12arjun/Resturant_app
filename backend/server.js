@@ -21,11 +21,16 @@ const app = express();
 // ✅ Security headers
 // Disable Cross-Origin-Opener-Policy to avoid blocking cross-window postMessage
 // (some OAuth flows and dev HMR clients rely on cross-window messaging)
-app.use(
-  helmet({
-    crossOriginOpenerPolicy: false,
-  })
-);
+
+app.use(cors({
+  origin: "https://resturant-app-1-6b96.onrender.com",
+  credentials: true
+}));
+// app.use(
+//   helmet({
+//     crossOriginOpenerPolicy: false,
+//   })
+// );
 
 // ✅ Logging
 app.use(morgan("dev"));
