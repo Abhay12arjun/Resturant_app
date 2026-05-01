@@ -2,7 +2,7 @@
 import axios from "axios";
 
 const API = axios.create({
-    baseURL: "http://localhost:5000/api", // backend URL
+    baseURL: "https://resturant-app-i5ez.onrender.com/api", // backend URL
 });
 
 // Example API calls
