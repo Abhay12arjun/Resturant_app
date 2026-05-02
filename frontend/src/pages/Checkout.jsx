@@ -120,18 +120,18 @@ const Checkout = () => {
                     netbanking: true,
                     wallet: true
                 },
-                config: {
-                    display: {
-                        blocks: {
-                            upi: {
-                                name: "Pay via UPI",
-                                instruments: [{ method: "upi" }],
-                            },
-                        },
-                        sequence: ["block.upi"],
-                        preferences: { show_default_blocks: false },
-                    },
-                },
+                // config: {
+                //     display: {
+                //         blocks: {
+                //             upi: {
+                //                 name: "Pay via UPI",
+                //                 instruments: [{ method: "upi" }],
+                //             },
+                //         },
+                //         sequence: ["block.upi"],
+                //         preferences: { show_default_blocks: false },
+                //     },
+                // },
                 modal: {
                     ondismiss: () => {
                         setIsProcessingPayment(false);
