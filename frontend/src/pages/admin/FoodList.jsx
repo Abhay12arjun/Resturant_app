@@ -38,10 +38,26 @@ export default function FoodList() {
     };
 
     // ✅ Toggle availability
+    // const toggle = async (id) => {
+    //     try {
+    //         await API.patch(`/food/${id}/toggle`);
+    //         fetchFoods();
+    //     } catch (err) {
+    //         console.error("Toggle failed:", err);
+    //     }
+    // };
+
     const toggle = async (id) => {
         try {
-            await API.patch(`/food/${id}/toggle`);
-            fetchFoods();
+            const res = await API.patch(`/food/${id}/toggle`);
+
+            setFoods(prev =>
+                prev.map(item =>
+                    item._id === id
+                        ? { ...item, isAvailable: res.data.isAvailable }
+                        : item
+                )
+            );
         } catch (err) {
             console.error("Toggle failed:", err);
         }
