@@ -114,7 +114,12 @@ const Checkout = () => {
                     contact: form.phone,
                 },
                 notes: { orderId },
-                method: { upi: true },
+                method: {
+                    upi: true,
+                    card: true,
+                    netbanking: true,
+                    wallet: true
+                },
                 config: {
                     display: {
                         blocks: {
