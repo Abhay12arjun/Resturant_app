@@ -23,9 +23,55 @@ const Orders = () => {
         }
     };
 
+    const mergeOrderUpdate = (updatedOrder) => {
+        if (!updatedOrder?._id) return;
+
+        const {
+            status,
+            statusTimestamps,
+            cancelledBy,
+            isPaid,
+            paymentStatus,
+            refundStatus,
+            refundAmount,
+            refundId,
+            refundedAt,
+            refundError,
+        } = updatedOrder;
+
+        setOrders((prev) =>
+            prev.map((order) =>
+                order._id === updatedOrder._id
+                    ? {
+                        ...order,
+                        status,
+                        statusTimestamps,
+                        cancelledBy,
+                        isPaid,
+                        paymentStatus,
+                        refundStatus,
+                        refundAmount,
+                        refundId,
+                        refundedAt,
+                        refundError,
+                    }
+                    : order
+            )
+        );
+    };
+
     useEffect(() => {
         fetchOrders();
         // Removed automatic polling — refresh now only on user click
+    }, []);
+
+    useEffect(() => {
+        const handleOrderUpdated = (event) => {
+            mergeOrderUpdate(event.detail);
+        };
+
+        window.addEventListener("orderUpdated", handleOrderUpdated);
+        return () => window.removeEventListener("orderUpdated", handleOrderUpdated);
     }, []);
 
     // ================= DELIVERY TOAST =================
@@ -61,10 +107,10 @@ const Orders = () => {
 
     // ================= PAYMENT =================
     const getPaymentLabel = (order) => {
-        if (order.paymentStatus === "refunded") {
+        if (order.refundStatus === "processed" || order.paymentStatus === "refunded") {
             return (
                 <span className="text-blue-600 font-semibold">
-                    Refunded
+                    Refund Completed
                 </span>
             );
         }
@@ -108,7 +154,7 @@ const Orders = () => {
 
     const getRefundLabel = (order) => {
         if (order.refundStatus === "processed") {
-            return `Refund processed for ₹${order.refundAmount || order.totalAmount}`;
+            return `Refund completed for ₹${order.refundAmount || order.totalAmount}`;
         }
 
         if (order.refundStatus === "pending") {
@@ -135,7 +181,8 @@ const Orders = () => {
             const res = await API.delete(`/orders/${id}`);
 
             toast.success(res.data?.message || "Order cancelled");
-            fetchOrders();
+            mergeOrderUpdate(res.data?.order);
+            await fetchOrders();
 
         } catch (err) {
             console.log(err);
@@ -238,6 +285,15 @@ const Orders = () => {
                                             </span>
                                         )}
                                     </p>
+                                )}
+
+                                {order.status === "cancelled" && order.refundStatus === "processed" && (
+                                    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                                        <span className="font-semibold">Refund Completed</span>
+                                        <span className="block">
+                                            ₹{order.refundAmount || order.totalAmount} has been refunded to your payment source.
+                                        </span>
+                                    </div>
                                 )}
 
                                 {/* PROGRESS */}

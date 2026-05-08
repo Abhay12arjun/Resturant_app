@@ -48,7 +48,7 @@ exports.processRefundForCancelledOrder = async (order) => {
 
   const payment = await Payment.findOne({
     order: order._id,
-    status: "success",
+    status: { $in: ["success", "refunded"] },
   }).sort({ createdAt: -1 });
 
   order.refundStatus = "pending";
@@ -120,17 +120,22 @@ exports.processRefundForCancelledOrder = async (order) => {
       return { refunded: true, order };
     }
 
-    order.refundStatus = "pending";
-    order.refundError = "Manual refund required for COD payment";
-    await order.save();
-
     if (payment) {
-      payment.refundStatus = "pending";
-      payment.refundError = "Manual refund required for COD payment";
+      payment.status = "refunded";
+      payment.refundStatus = "processed";
+      payment.refundedAt = new Date();
+      payment.refundError = null;
       await payment.save();
     }
 
-    return { refunded: false, reason: "Manual refund required", order };
+    order.paymentStatus = "refunded";
+    order.refundStatus = "processed";
+    order.refundId = payment ? `cod-refund-${payment._id}` : `cod-refund-${order._id}`;
+    order.refundedAt = new Date();
+    order.refundError = null;
+    await order.save();
+
+    return { refunded: true, order };
   } catch (err) {
     const message = err.message || "Refund failed";
 

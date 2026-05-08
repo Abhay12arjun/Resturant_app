@@ -310,6 +310,7 @@ router.put("/:id/payment", protect, async (req, res) => {
     }
 
     order.isPaid = isPaid;
+    order.paymentStatus = isPaid ? "paid" : "pending";
     await order.save();
 
     res.json({
@@ -363,6 +364,7 @@ router.delete("/:id", protect, async (req, res) => {
     try {
       const io = req.app.get("io");
       if (io) {
+        io.to(String(order.user)).emit("orderUpdated", order);
         io.to("adminRoom").emit("orderStatusChanged", order);
       }
     } catch (e) {

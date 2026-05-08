@@ -85,6 +85,8 @@ export const NotificationProvider = ({ children }) => {
             const isOwner = String(currentUserId) === String(orderUserId);
             if (!(isOwner || user.role === "admin")) return;
 
+            window.dispatchEvent(new CustomEvent("orderUpdated", { detail: order }));
+
             const prevStatus = prevOrdersRef.current[order._id];
             if (prevStatus === order.status) return; // already known
 
