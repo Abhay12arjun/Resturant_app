@@ -22,6 +22,22 @@ export default function OrderDetailsModal({ order, close }) {
         return (item.price || 0) * (item.quantity || 0);
     };
 
+    const getRefundText = () => {
+        if (order.refundStatus === "processed") {
+            return `Refund processed for ₹${order.refundAmount || order.totalAmount}`;
+        }
+
+        if (order.refundStatus === "pending") {
+            return "Refund pending";
+        }
+
+        if (order.refundStatus === "failed") {
+            return `Refund failed: ${order.refundError || "Check payment logs"}`;
+        }
+
+        return null;
+    };
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -159,6 +175,12 @@ export default function OrderDetailsModal({ order, close }) {
                                 <p className="text-red-600 font-medium">⚠️ Order Cancelled</p>
                                 {order.cancelledBy && (
                                     <p className="text-sm text-red-500">Cancelled by: {order.cancelledBy}</p>
+                                )}
+                                {getRefundText() && (
+                                    <p className="text-sm text-blue-600">{getRefundText()}</p>
+                                )}
+                                {order.refundedAt && (
+                                    <p className="text-sm text-blue-600">Refunded at: {formatDate(order.refundedAt)}</p>
                                 )}
                             </div>
                         </div>

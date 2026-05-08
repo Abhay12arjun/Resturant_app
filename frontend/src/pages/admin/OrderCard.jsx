@@ -7,6 +7,22 @@ export default function OrderCard({ order, refresh }) {
     const [showDetails, setShowDetails] = useState(false);
     const [loading, setLoading] = useState(false);
 
+    const getRefundLabel = () => {
+        if (order.refundStatus === "processed") {
+            return `Refunded ₹${order.refundAmount || order.totalAmount}`;
+        }
+
+        if (order.refundStatus === "pending") {
+            return "Refund pending";
+        }
+
+        if (order.refundStatus === "failed") {
+            return `Refund failed: ${order.refundError || "Check payment logs"}`;
+        }
+
+        return null;
+    };
+
     // ================= STATUS UPDATE =================
     const updateStatus = async (status) => {
         try {
@@ -22,9 +38,9 @@ export default function OrderCard({ order, refresh }) {
                 return;
             }
 
-            await API.put(`/orders/${order._id}/status`, { status });
+            const res = await API.put(`/orders/${order._id}/status`, { status });
 
-            toast.success("Status updated ✅");
+            toast.success(res.data?.message || "Status updated ✅");
             refresh();
 
         } catch (err) {
@@ -66,9 +82,9 @@ export default function OrderCard({ order, refresh }) {
         try {
             setLoading(true);
 
-            await API.delete(`/orders/${order._id}`);
+            const res = await API.delete(`/orders/${order._id}`);
 
-            toast.success("Order deleted 🗑️");
+            toast.success(res.data?.message || "Order cancelled");
             refresh();
 
         } catch (err) {
@@ -155,6 +171,9 @@ export default function OrderCard({ order, refresh }) {
                 )}
                 {order.status === "cancelled" && (
                     <span className="ml-2 text-red-600 font-semibold">Order Cancelled</span>
+                )}
+                {order.status === "cancelled" && getRefundLabel() && (
+                    <p className="text-xs text-blue-600 mt-1">{getRefundLabel()}</p>
                 )}
             </div>
 

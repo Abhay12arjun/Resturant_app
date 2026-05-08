@@ -30,6 +30,124 @@ const getRazorpayClient = () => {
   return razorpayClient;
 };
 
+exports.processRefundForCancelledOrder = async (order) => {
+  if (!order) return null;
+
+  if (order.refundStatus === "processed") {
+    return { refunded: true, order };
+  }
+
+  const isPaid = order.isPaid || order.paymentStatus === "paid";
+  if (!isPaid) {
+    order.refundStatus = "not_applicable";
+    order.refundAmount = 0;
+    order.refundError = null;
+    await order.save();
+    return { refunded: false, reason: "Order is not paid", order };
+  }
+
+  const payment = await Payment.findOne({
+    order: order._id,
+    status: "success",
+  }).sort({ createdAt: -1 });
+
+  order.refundStatus = "pending";
+  order.refundAmount = Number(order.totalAmount || 0);
+  order.refundError = null;
+  await order.save();
+
+  if (payment) {
+    payment.refundStatus = "pending";
+    payment.refundAmount = Number(order.totalAmount || payment.amount || 0);
+    payment.refundError = null;
+    await payment.save();
+  }
+
+  try {
+    if (order.paymentMethod === "ONLINE") {
+      if (!payment?.razorpayPaymentId) {
+        throw new Error("Razorpay payment id not found for this order");
+      }
+
+      const client = getRazorpayClient();
+      if (!client) {
+        throw new Error("Razorpay is not configured");
+      }
+
+      const amountPaise = Math.round(Number(order.totalAmount || 0) * 100);
+      const refund = await client.payments.refund(payment.razorpayPaymentId, {
+        amount: amountPaise,
+        speed: "normal",
+        notes: {
+          orderId: String(order._id),
+          paymentRecordId: String(payment._id),
+        },
+      });
+
+      payment.status = "refunded";
+      payment.refundStatus = "processed";
+      payment.razorpayRefundId = refund.id;
+      payment.refundedAt = new Date();
+      payment.refundError = null;
+      await payment.save();
+
+      order.paymentStatus = "refunded";
+      order.refundStatus = "processed";
+      order.refundId = refund.id;
+      order.refundedAt = new Date();
+      order.refundError = null;
+      await order.save();
+
+      return { refunded: true, refund, order };
+    }
+
+    if (order.paymentMethod === "UPI") {
+      if (payment) {
+        payment.status = "refunded";
+        payment.refundStatus = "processed";
+        payment.refundedAt = new Date();
+        payment.refundError = null;
+        await payment.save();
+      }
+
+      order.paymentStatus = "refunded";
+      order.refundStatus = "processed";
+      order.refundId = payment ? `upi-refund-${payment._id}` : `upi-refund-${order._id}`;
+      order.refundedAt = new Date();
+      order.refundError = null;
+      await order.save();
+
+      return { refunded: true, order };
+    }
+
+    order.refundStatus = "pending";
+    order.refundError = "Manual refund required for COD payment";
+    await order.save();
+
+    if (payment) {
+      payment.refundStatus = "pending";
+      payment.refundError = "Manual refund required for COD payment";
+      await payment.save();
+    }
+
+    return { refunded: false, reason: "Manual refund required", order };
+  } catch (err) {
+    const message = err.message || "Refund failed";
+
+    order.refundStatus = "failed";
+    order.refundError = message;
+    await order.save();
+
+    if (payment) {
+      payment.refundStatus = "failed";
+      payment.refundError = message;
+      await payment.save();
+    }
+
+    return { refunded: false, error: message, order };
+  }
+};
+
 // ================= GET ALL PAYMENTS =================
 exports.getPayments = async (req, res) => {
   const { status, startDate, endDate } = req.query;
@@ -119,8 +237,14 @@ exports.createUpiPayment = async (req, res) => {
     // For demo purposes, we'll mark as success after a short delay
     setTimeout(async () => {
       try {
+        const currentOrder = await Order.findById(order._id);
+        if (!currentOrder || currentOrder.status === "cancelled") {
+          await Payment.findByIdAndUpdate(payment._id, { status: "failed" });
+          return;
+        }
+
         await Payment.findByIdAndUpdate(payment._id, { status: "success" });
-        await Order.findByIdAndUpdate(order._id, {
+        await Order.findByIdAndUpdate(currentOrder._id, {
           isPaid: true,
           paymentStatus: "paid",
         });

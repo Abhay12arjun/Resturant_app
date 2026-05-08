@@ -61,6 +61,14 @@ const Orders = () => {
 
     // ================= PAYMENT =================
     const getPaymentLabel = (order) => {
+        if (order.paymentStatus === "refunded") {
+            return (
+                <span className="text-blue-600 font-semibold">
+                    Refunded
+                </span>
+            );
+        }
+
         if (order.isPaid || order.paymentStatus === "paid") {
             return (
                 <span className="text-green-600 font-semibold">
@@ -98,6 +106,22 @@ const Orders = () => {
         );
     };
 
+    const getRefundLabel = (order) => {
+        if (order.refundStatus === "processed") {
+            return `Refund processed for ₹${order.refundAmount || order.totalAmount}`;
+        }
+
+        if (order.refundStatus === "pending") {
+            return "Refund pending";
+        }
+
+        if (order.refundStatus === "failed") {
+            return `Refund failed: ${order.refundError || "Please contact support"}`;
+        }
+
+        return null;
+    };
+
     // ================= PROGRESS =================
     const steps = ["pending", "preparing", "out_for_delivery", "delivered", "cancelled"];
 
@@ -108,9 +132,9 @@ const Orders = () => {
         try {
             setActionLoading(id);
 
-            await API.delete(`/orders/${id}`);
+            const res = await API.delete(`/orders/${id}`);
 
-            toast.success("Order cancelled 🗑️");
+            toast.success(res.data?.message || "Order cancelled");
             fetchOrders();
 
         } catch (err) {
@@ -206,6 +230,11 @@ const Orders = () => {
                                         {order.statusTimestamps?.cancelled && (
                                             <span className="block text-xs text-gray-500 mt-1">
                                                 Cancelled at: {new Date(order.statusTimestamps.cancelled).toLocaleString()}
+                                            </span>
+                                        )}
+                                        {getRefundLabel(order) && (
+                                            <span className="block text-xs text-blue-600 mt-1">
+                                                {getRefundLabel(order)}
                                             </span>
                                         )}
                                     </p>

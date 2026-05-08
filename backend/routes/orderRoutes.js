@@ -5,6 +5,7 @@ const Order = require("../models/Orders");
 const Cart = require("../models/Cart");
 const Food = require("../models/Food");
 const { protect } = require("../middleware/authMiddleware");
+const { processRefundForCancelledOrder } = require("../controllers/paymentController");
 
 // ================= HELPER =================
 const isAdmin = (req) => req.user && req.user.role === "admin";
@@ -258,6 +259,11 @@ router.put("/:id/status", protect, async (req, res) => {
     order.status = status;
     await order.save();
 
+    let refundResult = null;
+    if (status === "cancelled") {
+      refundResult = await processRefundForCancelledOrder(order);
+    }
+
     // Emit real-time update to the order owner (and admins if desired)
     try {
       const io = req.app.get("io");
@@ -272,8 +278,11 @@ router.put("/:id/status", protect, async (req, res) => {
     }
 
     res.json({
-      message: "Order status updated ✅",
+      message: refundResult?.refunded
+        ? "Order cancelled and refund processed"
+        : "Order status updated ✅",
       order,
+      refund: refundResult,
     });
 
   } catch (error) {
@@ -348,6 +357,8 @@ router.delete("/:id", protect, async (req, res) => {
     }
     await order.save();
 
+    const refundResult = await processRefundForCancelledOrder(order);
+
     // Notify admins that the order was cancelled
     try {
       const io = req.app.get("io");
@@ -358,7 +369,13 @@ router.delete("/:id", protect, async (req, res) => {
       console.error("Socket emit orderCancelled failed:", e.message);
     }
 
-    res.json({ message: "Order cancelled", order });
+    res.json({
+      message: refundResult?.refunded
+        ? "Order cancelled and refund processed"
+        : "Order cancelled",
+      order,
+      refund: refundResult,
+    });
 
   } catch (error) {
     console.log("DELETE ORDER ERROR:", error);
