@@ -18,14 +18,22 @@ const app = express();
 
 // ✅ Single source of truth
 const CLIENT_URL = process.env.CLIENT_URL || "https://resturant-app-1-w8cs.onrender.com";
+const allowedOrigins = CLIENT_URL.split(",").map((origin) => origin.trim()).filter(Boolean);
+const devOrigins = ["http://localhost:5173", "http://127.0.0.1:5173"];
 
-app.use(
-  cors({
-    origin: CLIENT_URL,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-  })
-);
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || devOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS blocked origin: ${origin}`));
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 
 // ================= MIDDLEWARE =================
 
@@ -94,7 +102,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: CLIENT_URL,
+    origin: [...allowedOrigins, ...devOrigins],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   },

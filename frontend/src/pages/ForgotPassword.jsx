@@ -1,5 +1,5 @@
 import { useState } from "react";
-import API from "../api/api";
+import { forgotPassword } from "../api/api";
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState("");
@@ -9,7 +9,7 @@ const ForgotPassword = () => {
         e.preventDefault();
         try {
             setLoading(true);
-            await API.post("/auth/forgot-password", { email });
+            await forgotPassword(email);
             alert("Reset link sent to your email 📩");
         } catch (error) {
             alert("Something went wrong ❌");

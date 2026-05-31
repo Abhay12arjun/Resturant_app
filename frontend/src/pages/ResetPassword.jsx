@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import API, { checkBackendHealth } from "../api/api";
+import { checkBackendHealth, resetPassword } from "../api/api";
 
 const ResetPassword = () => {
     const { token } = useParams();
@@ -28,7 +28,7 @@ const ResetPassword = () => {
             setLoading(true);
             setError("");
 
-            await API.put(`/auth/reset-password/${token}`, { password });
+            await resetPassword(token, password);
 
             setSuccess("Password reset successfully 🎉");
 

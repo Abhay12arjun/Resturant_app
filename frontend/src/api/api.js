@@ -1,10 +1,13 @@
 import axios from "axios";
 
+const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 90000;
+const PASSWORD_API_TIMEOUT = Number(import.meta.env.VITE_PASSWORD_API_TIMEOUT) || 120000;
+
 // ================= BASE API INSTANCE =================
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "https://resturant-app-i5ez.onrender.com/api",
   withCredentials: true,
-  timeout: 30000, // ⏱️ 30s timeout for Render cold starts
+  timeout: API_TIMEOUT,
 });
 
 // ================= REQUEST INTERCEPTOR =================
@@ -100,10 +103,10 @@ export const googleAuth = (data) =>
   API.post("/auth/google", data);
 
 export const forgotPassword = (email) =>
-  API.post("/auth/forgot-password", { email });
+  API.post("/auth/forgot-password", { email }, { timeout: PASSWORD_API_TIMEOUT });
 
 export const resetPassword = (token, password) =>
-  API.put(`/auth/reset-password/${token}`, { password });
+  API.put(`/auth/reset-password/${token}`, { password }, { timeout: PASSWORD_API_TIMEOUT });
 
 // 🔐 Verify token
 export const verifyToken = () =>
