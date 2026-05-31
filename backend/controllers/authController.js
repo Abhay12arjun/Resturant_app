@@ -4,6 +4,14 @@ const crypto = require("crypto");
 const generateToken = require("../utils/generateToken");
 const sendEmail = require("../config/mail");
 
+const withTimeout = (promise, timeoutMs, message) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(message)), timeoutMs)
+    ),
+  ]);
+
 // ================= REGISTER =================
 exports.register = async (req, res) => {
   try {
@@ -121,7 +129,11 @@ exports.googleAuth = async (req, res) => {
 // ================= FORGOT PASSWORD =================
 exports.forgotPassword = async (req, res) => {
   try {
-    const user = await User.findOne({ email: req.body.email });
+    const user = await withTimeout(
+      User.findOne({ email: req.body.email }).maxTimeMS(10000),
+      15000,
+      "Database timeout while finding reset user"
+    );
 
     if (!user)
       return res.status(404).json({ msg: "User not found" });
@@ -141,10 +153,18 @@ exports.forgotPassword = async (req, res) => {
     user.resetPasswordExpire =
       Date.now() + expireMinutes * 60 * 1000;
 
-    await user.save();
+    await withTimeout(
+      user.save(),
+      15000,
+      "Database timeout while saving reset token"
+    );
 
     // 🌐 Dynamic client URL
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+    const clientUrl = (process.env.CLIENT_URL || "https://resturant-app-1-w8cs.onrender.com")
+      .split(",")[0]
+      .trim()
+      .replace(/\/$/, "");
+    const resetUrl = `${clientUrl}/reset-password/${resetToken}`;
 
     const message = `
       <h3>Password Reset Request</h3>
@@ -153,32 +173,48 @@ exports.forgotPassword = async (req, res) => {
     `;
 
     // 📧 Send email
-    await sendEmail({
-      email: user.email,
-      subject: "Password Reset",
-      message,
-    });
+    await withTimeout(
+      sendEmail({
+        email: user.email,
+        subject: "Password Reset",
+        message,
+      }),
+      30000,
+      "Email service timeout while sending reset link"
+    );
 
     res.json({ msg: "Reset link sent to email" });
 
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ msg: "Email sending failed" });
+    console.error("Forgot password error:", err.message);
+    res.status(err.message.includes("timeout") ? 504 : 500).json({
+      msg: err.message.includes("timeout")
+        ? "Password reset service timed out. Please try again shortly."
+        : "Email sending failed",
+    });
   }
 };
 
 // ================= RESET PASSWORD =================
 exports.resetPassword = async (req, res) => {
   try {
+    if (!req.body.password || req.body.password.length < 6) {
+      return res.status(400).json({ msg: "Password must be at least 6 characters" });
+    }
+
     const hashedToken = crypto
       .createHash("sha256")
       .update(req.params.token)
       .digest("hex");
 
-    const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpire: { $gt: Date.now() },
-    });
+    const user = await withTimeout(
+      User.findOne({
+        resetPasswordToken: hashedToken,
+        resetPasswordExpire: { $gt: Date.now() },
+      }).maxTimeMS(10000),
+      15000,
+      "Database timeout while validating reset token"
+    );
 
     if (!user) {
       console.log("❌ Reset token invalid or expired:", req.params.token);
@@ -189,14 +225,22 @@ exports.resetPassword = async (req, res) => {
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
 
-    await user.save();
+    await withTimeout(
+      user.save(),
+      15000,
+      "Database timeout while saving new password"
+    );
 
     console.log("✅ Password reset successful for user:", user.email);
     res.json({ msg: "Password reset successful" });
 
   } catch (err) {
     console.error("❌ Reset password error:", err.message);
-    res.status(500).json({ msg: "Reset failed" });
+    res.status(err.message.includes("timeout") ? 504 : 500).json({
+      msg: err.message.includes("timeout")
+        ? "Password reset service timed out. Please try again shortly."
+        : "Reset failed",
+    });
   }
 };
 

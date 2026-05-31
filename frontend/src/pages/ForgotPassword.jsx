@@ -12,7 +12,7 @@ const ForgotPassword = () => {
             await forgotPassword(email);
             alert("Reset link sent to your email 📩");
         } catch (error) {
-            alert("Something went wrong ❌");
+            alert(error.response?.data?.msg || error.message || "Something went wrong ❌");
         } finally {
             setLoading(false);
         }

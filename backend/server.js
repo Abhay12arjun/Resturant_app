@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
+const mongoose = require("mongoose");
 const { Server } = require("socket.io");
 const morgan = require("morgan");
 const helmet = require("helmet");
@@ -17,9 +18,12 @@ const app = express();
 // ================= CORS CONFIG (FIXED) =================
 
 // ✅ Single source of truth
-const CLIENT_URL = process.env.CLIENT_URL || "https://resturant-app-1-w8cs.onrender.com";
-const allowedOrigins = CLIENT_URL.split(",").map((origin) => origin.trim()).filter(Boolean);
+const DEFAULT_CLIENT_URL = "https://resturant-app-1-w8cs.onrender.com";
+const CLIENT_URL = process.env.CLIENT_URL || DEFAULT_CLIENT_URL;
+const normalizeOrigin = (origin) => origin.trim().replace(/\/$/, "");
+const configuredOrigins = CLIENT_URL.split(",").map(normalizeOrigin).filter(Boolean);
 const devOrigins = ["http://localhost:5173", "http://127.0.0.1:5173"];
+const allowedOrigins = [...new Set([...configuredOrigins, DEFAULT_CLIENT_URL, ...devOrigins])];
 
 const corsOptions = {
   origin(origin, callback) {
@@ -27,7 +31,8 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    return callback(new Error(`CORS blocked origin: ${origin}`));
+    console.warn(`CORS blocked origin: ${origin}`);
+    return callback(null, false);
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
@@ -71,10 +76,13 @@ app.get("/", (req, res) => {
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
-  res.json({ 
-    status: "✅ Backend is healthy",
+  const dbReady = mongoose.connection.readyState === 1;
+
+  res.json({
+    status: dbReady ? "Backend is healthy" : "Backend is running, database is not connected",
+    database: dbReady ? "connected" : "disconnected",
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
+    environment: process.env.NODE_ENV,
   });
 });
 
