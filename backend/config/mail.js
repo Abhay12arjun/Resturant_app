@@ -1,6 +1,8 @@
 const nodemailer = require("nodemailer");
 
 const requestTimeout = Number(process.env.EMAIL_REQUEST_TIMEOUT) || 20000;
+const emailProvider = (process.env.EMAIL_PROVIDER || "auto").toLowerCase();
+const isRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID);
 
 const fetchWithTimeout = async (url, options) => {
   const controller = new AbortController();
@@ -17,6 +19,10 @@ const fetchWithTimeout = async (url, options) => {
 };
 
 const sendWithBrevo = async (options) => {
+  if (!process.env.BREVO_API_KEY) {
+    throw new Error("BREVO_API_KEY is missing");
+  }
+
   const response = await fetchWithTimeout("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
@@ -41,6 +47,10 @@ const sendWithBrevo = async (options) => {
 };
 
 const sendWithResend = async (options) => {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY is missing");
+  }
+
   const response = await fetchWithTimeout("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -97,12 +107,16 @@ const sendWithSmtp = async (options) => {
 };
 
 const sendEmail = async (options) => {
-  if (process.env.BREVO_API_KEY) {
+  if (emailProvider === "brevo" || (emailProvider === "auto" && process.env.BREVO_API_KEY)) {
     return sendWithBrevo(options);
   }
 
-  if (process.env.RESEND_API_KEY) {
+  if (emailProvider === "resend" || (emailProvider === "auto" && process.env.RESEND_API_KEY)) {
     return sendWithResend(options);
+  }
+
+  if (emailProvider !== "smtp" && isRender) {
+    throw new Error("Render blocks Gmail SMTP. Add BREVO_API_KEY or RESEND_API_KEY to the Render backend environment.");
   }
 
   return sendWithSmtp(options);

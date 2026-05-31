@@ -192,7 +192,7 @@ exports.forgotPassword = async (req, res) => {
     res.status(err.message.includes("timeout") ? 504 : 502).json({
       msg: err.message.includes("timeout")
         ? "Email service timed out. Render free services block SMTP ports; configure BREVO_API_KEY or RESEND_API_KEY."
-        : `Email sending failed: ${err.message}`,
+        : err.message,
     });
   }
 };
