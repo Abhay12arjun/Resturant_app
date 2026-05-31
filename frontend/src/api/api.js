@@ -27,7 +27,25 @@ API.interceptors.response.use(
   (error) => {
     if (!error.response) {
       console.error("❌ Network error / Server unreachable");
-      return Promise.reject(error);
+      console.error("Error details:", {
+        message: error.message,
+        code: error.code,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          baseURL: error.config?.baseURL,
+        }
+      });
+      
+      // Better error message for user
+      const errorMsg = error.code === 'ECONNABORTED' 
+        ? 'Request timeout - Server is not responding' 
+        : 'Network error - Unable to reach server. Please check your connection.';
+      
+      return Promise.reject({
+        message: errorMsg,
+        originalError: error
+      });
     }
 
     const { status, config, data } = error.response;
@@ -165,7 +183,17 @@ export const createUpiPaymentAPI = (data) =>
 export const verifyUpiPaymentAPI = (paymentId) =>
   API.get(`/payment/verify/${paymentId}`);
 
-
+// ================= HEALTH CHECK =================
+export const checkBackendHealth = async () => {
+  try {
+    const response = await API.get("/health", { timeout: 5000 });
+    console.log("✅ Backend is healthy:", response.data);
+    return true;
+  } catch (error) {
+    console.error("❌ Backend health check failed:", error.message);
+    return false;
+  }
+};
 
 // ================= EXPORT =================
 export default API;

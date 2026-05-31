@@ -61,6 +61,15 @@ app.get("/", (req, res) => {
   res.status(200).send("🚀 API Running...");
 });
 
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "✅ Backend is healthy",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV
+  });
+});
+
 // ================= ERROR HANDLING =================
 
 app.use((req, res) => {

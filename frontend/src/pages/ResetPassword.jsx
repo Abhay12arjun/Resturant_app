@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import API from "../api/api";
+import API, { checkBackendHealth } from "../api/api";
 
 const ResetPassword = () => {
     const { token } = useParams();
@@ -37,7 +37,29 @@ const ResetPassword = () => {
             }, 2000);
 
         } catch (err) {
-            setError(err.response?.data?.msg || "Something went wrong");
+            console.error("Reset password error:", err);
+
+            // Check backend connectivity if network error
+            if (err.message?.includes("Server") || err.message?.includes("timeout")) {
+                const isHealthy = await checkBackendHealth();
+                if (!isHealthy) {
+                    setError("🔴 Backend server is not responding. Please try again in a few moments.");
+                } else {
+                    setError(err.message);
+                }
+            }
+            // Handle custom error from interceptor
+            else if (err.message) {
+                setError(err.message);
+            }
+            // Handle API response error
+            else if (err.response?.data?.msg) {
+                setError(err.response.data.msg);
+            }
+            // Fallback
+            else {
+                setError("Failed to reset password. Please try again.");
+            }
         } finally {
             setLoading(false);
         }

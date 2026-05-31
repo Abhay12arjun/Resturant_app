@@ -180,8 +180,10 @@ exports.resetPassword = async (req, res) => {
       resetPasswordExpire: { $gt: Date.now() },
     });
 
-    if (!user)
+    if (!user) {
+      console.log("❌ Reset token invalid or expired:", req.params.token);
       return res.status(400).json({ msg: "Invalid or expired token" });
+    }
 
     user.password = await bcrypt.hash(req.body.password, 10);
     user.resetPasswordToken = undefined;
@@ -189,9 +191,11 @@ exports.resetPassword = async (req, res) => {
 
     await user.save();
 
+    console.log("✅ Password reset successful for user:", user.email);
     res.json({ msg: "Password reset successful" });
 
   } catch (err) {
+    console.error("❌ Reset password error:", err.message);
     res.status(500).json({ msg: "Reset failed" });
   }
 };
