@@ -79,7 +79,7 @@ API.interceptors.response.use(
 
     // ================= 💥 SERVER ERROR =================
     if (status >= 500) {
-      console.error("💥 Server error:", data?.message || "Unknown error");
+      console.error("💥 Server error:", data?.msg || data?.message || "Unknown error");
     }
 
     return Promise.reject(error);

@@ -135,8 +135,9 @@ exports.forgotPassword = async (req, res) => {
       "Database timeout while finding reset user"
     );
 
-    if (!user)
-      return res.status(404).json({ msg: "User not found" });
+    if (!user) {
+      return res.json({ msg: "If that email exists, a reset link will be sent shortly." });
+    }
 
     // 🔐 Generate token
     const resetToken = crypto.randomBytes(20).toString("hex");
@@ -172,8 +173,10 @@ exports.forgotPassword = async (req, res) => {
       <a href="${resetUrl}">${resetUrl}</a>
     `;
 
-    // 📧 Send email
-    await withTimeout(
+    res.json({ msg: "If that email exists, a reset link will be sent shortly." });
+
+    // Send email after responding so SMTP latency cannot cause a browser timeout.
+    withTimeout(
       sendEmail({
         email: user.email,
         subject: "Password Reset",
@@ -181,9 +184,9 @@ exports.forgotPassword = async (req, res) => {
       }),
       30000,
       "Email service timeout while sending reset link"
-    );
-
-    res.json({ msg: "Reset link sent to email" });
+    ).catch((error) => {
+      console.error("Password reset email failed:", error.message);
+    });
 
   } catch (err) {
     console.error("Forgot password error:", err.message);
