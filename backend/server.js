@@ -17,7 +17,7 @@ const app = express();
 // ================= CORS CONFIG (FIXED) =================
 
 // ✅ Single source of truth
-const CLIENT_URL = process.env.CLIENT_URL || "https://resturant-app-1-6b96.onrender.com";
+const CLIENT_URL = process.env.CLIENT_URL || "https://resturant-app-1-w8cs.onrender.com";
 
 app.use(
   cors({

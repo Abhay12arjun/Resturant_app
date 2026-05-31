@@ -4,7 +4,7 @@ import axios from "axios";
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "https://resturant-app-i5ez.onrender.com/api",
   withCredentials: true,
-  timeout: 10000, // ⏱️ prevent hanging requests
+  timeout: 30000, // ⏱️ 30s timeout for Render cold starts
 });
 
 // ================= REQUEST INTERCEPTOR =================
