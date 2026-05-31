@@ -4,6 +4,8 @@ const crypto = require("crypto");
 const generateToken = require("../utils/generateToken");
 const sendEmail = require("../config/mail");
 
+const DEFAULT_CLIENT_URL = "https://resturant-app-1-6b96.onrender.com";
+
 const withTimeout = (promise, timeoutMs, message) =>
   Promise.race([
     promise,
@@ -161,7 +163,7 @@ exports.forgotPassword = async (req, res) => {
     );
 
     // 🌐 Dynamic client URL
-    const clientUrl = (process.env.CLIENT_URL || "https://resturant-app-1-w8cs.onrender.com")
+    const clientUrl = (process.env.CLIENT_URL || DEFAULT_CLIENT_URL)
       .split(",")[0]
       .trim()
       .replace(/\/$/, "");
@@ -173,27 +175,24 @@ exports.forgotPassword = async (req, res) => {
       <a href="${resetUrl}">${resetUrl}</a>
     `;
 
-    res.json({ msg: "If that email exists, a reset link will be sent shortly." });
-
-    // Send email after responding so SMTP latency cannot cause a browser timeout.
-    withTimeout(
+    await withTimeout(
       sendEmail({
         email: user.email,
         subject: "Password Reset",
         message,
       }),
-      30000,
+      25000,
       "Email service timeout while sending reset link"
-    ).catch((error) => {
-      console.error("Password reset email failed:", error.message);
-    });
+    );
+
+    res.json({ msg: "Reset link sent to your email." });
 
   } catch (err) {
     console.error("Forgot password error:", err.message);
-    res.status(err.message.includes("timeout") ? 504 : 500).json({
+    res.status(err.message.includes("timeout") ? 504 : 502).json({
       msg: err.message.includes("timeout")
-        ? "Password reset service timed out. Please try again shortly."
-        : "Email sending failed",
+        ? "Email service timed out. Check EMAIL_USER/EMAIL_PASS on Render."
+        : `Email sending failed: ${err.message}`,
     });
   }
 };

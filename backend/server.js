@@ -18,12 +18,16 @@ const app = express();
 // ================= CORS CONFIG (FIXED) =================
 
 // ✅ Single source of truth
-const DEFAULT_CLIENT_URL = "https://resturant-app-1-w8cs.onrender.com";
+const DEFAULT_CLIENT_URL = "https://resturant-app-1-6b96.onrender.com";
 const CLIENT_URL = process.env.CLIENT_URL || DEFAULT_CLIENT_URL;
 const normalizeOrigin = (origin) => origin.trim().replace(/\/$/, "");
 const configuredOrigins = CLIENT_URL.split(",").map(normalizeOrigin).filter(Boolean);
 const devOrigins = ["http://localhost:5173", "http://127.0.0.1:5173"];
-const allowedOrigins = [...new Set([...configuredOrigins, DEFAULT_CLIENT_URL, ...devOrigins])];
+const knownProductionOrigins = [
+  DEFAULT_CLIENT_URL,
+  "https://resturant-app-1-w8cs.onrender.com",
+];
+const allowedOrigins = [...new Set([...configuredOrigins, ...knownProductionOrigins, ...devOrigins])];
 
 const corsOptions = {
   origin(origin, callback) {
